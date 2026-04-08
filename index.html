@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据导入验证工具 - Data Import Validator</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- 头部导航 -->
+        <header class="header">
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                    <rect width="32" height="32" rx="8" fill="#4F46E5"/>
+                    <path d="M8 16L14 22L24 10" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <h1>数据导入验证工具</h1>
+            </div>
+            <nav class="nav-tabs">
+                <button class="nav-tab active" data-tab="validator">数据验证</button>
+                <button class="nav-tab" data-tab="template">模板校验</button>
+                <button class="nav-tab" data-tab="docs">规范文档</button>
+                <button class="nav-tab" data-tab="guide">问题排查</button>
+                <button class="nav-tab" data-tab="tutorial">视频教程</button>
+            </nav>
+        </header>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 数据验证模块 -->
+            <section id="validator" class="tab-content active">
+                <div class="validator-section">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">
+                            <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                                <path d="M32 8v48M8 32h48" stroke="#4F46E5" stroke-width="4" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <h3>拖拽文件到此处或点击上传</h3>
+                        <p>支持 Excel (.xlsx, .xls) 和 CSV 格式</p>
+                        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" hidden>
+                        <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                            选择文件
+                        </button>
+                    </div>
+
+                    <div class="validation-options">
+                        <h4>验证选项</h4>
+                        <div class="option-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="strictMode" checked>
+                                <span>严格模式（所有错误必须修复）</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="autoFix" checked>
+                                <span>自动修复可修复的问题</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="showExamples" checked>
+                                <span>显示正确示例</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 验证结果展示区 -->
+                    <div id="validationResult" class="validation-result" style="display: none;">
+                        <div class="result-header">
+                            <h3>验证结果</h3>
+                            <div class="result-stats">
+                                <span class="stat-item error">
+                                    <span class="stat-icon">❌</span>
+                                    <span id="errorCount">0</span> 错误
+                                </span>
+                                <span class="stat-item warning">
+                                    <span class="stat-icon">⚠️</span>
+                                    <span id="warningCount">0</span> 警告
+                                </span>
+                                <span class="stat-item success">
+                                    <span class="stat-icon">✅</span>
+                                    <span id="successCount">0</span> 通过
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div id="errorList" class="error-list"></div>
+                        
+                        <div class="result-actions">
+                            <button class="btn btn-secondary" id="downloadReport">下载验证报告</button>
+                            <button class="btn btn-primary" id="downloadFixed">下载修复后的文件</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 模板校验模块 -->
+            <section id="template" class="tab-content">
+                <div class="template-section">
+                    <div class="template-selector">
+                        <h3>选择数据模板类型</h3>
+                        <div class="template-cards">
+                            <div class="template-card" data-template="employee">
+                                <div class="card-icon">👥</div>
+                                <h4>员工信息</h4>
+                                <p>包含姓名、工号、入职日期等字段</p>
+                            </div>
+                            <div class="template-card" data-template="product">
+                                <div class="card-icon">📦</div>
+                                <h4>产品信息</h4>
+                                <p>包含产品编码、名称、规格、价格等</p>
+                            </div>
+                            <div class="template-card" data-template="order">
+                                <div class="card-icon">📋</div>
+                                <h4>订单数据</h4>
+                                <p>包含订单号、客户信息、金额等</p>
+                            </div>
+                            <div class="template-card" data-template="inventory">
+                                <div class="card-icon">🏭</div>
+                                <h4>库存数据</h4>
+                                <p>包含物料编码、数量、仓库位置等</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="templatePreview" class="template-preview" style="display: none;">
+                        <div class="preview-header">
+                            <h3 id="templateTitle">模板预览</h3>
+                            <button class="btn btn-secondary" id="downloadTemplate">下载空白模板</button>
+                        </div>
+                        <div class="field-list" id="fieldList"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 规范文档模块 -->
+            <section id="docs" class="tab-content">
+                <div class="docs-section">
+                    <div class="docs-sidebar">
+                        <div class="search-box">
+                            <input type="text" id="docSearch" placeholder="搜索规范文档...">
+                            <button class="search-btn">🔍</button>
+                        </div>
+                        <nav class="docs-nav">
+                            <div class="nav-group">
+                                <h4>数据类型规范</h4>
+                                <ul>
+                                    <li><a href="#date-format" class="active">日期格式</a></li>
+                                    <li><a href="#number-format">数字格式</a></li>
+                                    <li><a href="#text-format">文本格式</a></li>
+                                    <li><a href="#code-format">编码格式</a></li>
+                                </ul>
+                            </div>
+                            <div class="nav-group">
+                                <h4>字段规范</h4>
+                                <ul>
+                                    <li><a href="#required-fields">必填字段</a></li>
+                                    <li><a href="#field-length">字段长度</a></li>
+                                    <li><a href="#special-chars">特殊字符</a></li>
+                                </ul>
+                            </div>
+                            <div class="nav-group">
+                                <h4>导入指南</h4>
+                                <ul>
+                                    <li><a href="#file-requirements">文件要求</a></li>
+                                    <li><a href="#encoding-guide">编码指南</a></li>
+                                    <li><a href="#batch-import">批量导入</a></li>
+                                </ul>
+                            </div>
+                        </nav>
+                    </div>
+                    <div class="docs-content" id="docsContent">
+                        <!-- 动态加载文档内容 -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 问题排查模块 -->
+            <section id="guide" class="tab-content">
+                <div class="guide-section">
+                    <div class="guide-header">
+                        <h3>自助问题排查</h3>
+                        <p>选择您遇到的问题类型，获取解决方案</p>
+                    </div>
+                    
+                    <div class="issue-categories">
+                        <div class="issue-card" data-issue="date">
+                            <div class="issue-icon">📅</div>
+                            <h4>日期格式问题</h4>
+                            <p>日期导入失败、格式不正确</p>
+                        </div>
+                        <div class="issue-card" data-issue="number">
+                            <div class="issue-icon">🔢</div>
+                            <h4>数字格式问题</h4>
+                            <p>金额、数量等数字字段错误</p>
+                        </div>
+                        <div class="issue-card" data-issue="encoding">
+                            <div class="issue-icon">🔤</div>
+                            <h4>编码问题</h4>
+                            <p>中文乱码、特殊字符错误</p>
+                        </div>
+                        <div class="issue-card" data-issue="missing">
+                            <div class="issue-icon">❓</div>
+                            <h4>必填字段缺失</h4>
+                            <p>必填项为空或格式不符</p>
+                        </div>
+                        <div class="issue-card" data-issue="duplicate">
+                            <div class="issue-icon">🔄</div>
+                            <h4>重复数据</h4>
+                            <p>数据重复或主键冲突</p>
+                        </div>
+                        <div class="issue-card" data-issue="reference">
+                            <div class="issue-icon">🔗</div>
+                            <h4>关联数据错误</h4>
+                            <p>外键关联、引用不存在</p>
+                        </div>
+                    </div>
+
+                    <div id="troubleshootingGuide" class="troubleshooting-guide" style="display: none;">
+                        <!-- 动态加载排查指南 -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 视频教程模块 -->
+            <section id="tutorial" class="tab-content">
+                <div class="tutorial-section">
+                    <div class="tutorial-header">
+                        <h3>操作视频教程</h3>
+                        <p>通过视频学习正确的数据录入和导入方法</p>
+                    </div>
+                    
+                    <div class="video-grid">
+                        <div class="video-card">
+                            <div class="video-thumbnail">
+                                <div class="play-btn">▶</div>
+                                <span class="video-duration">5:30</span>
+                            </div>
+                            <div class="video-info">
+                                <h4>快速入门：数据导入基础</h4>
+                                <p>了解基本的数据导入流程和注意事项</p>
+                                <span class="video-tag">入门</span>
+                            </div>
+                        </div>
+                        <div class="video-card">
+                            <div class="video-thumbnail">
+                                <div class="play-btn">▶</div>
+                                <span class="video-duration">8:45</span>
+                            </div>
+                            <div class="video-info">
+                                <h4>日期格式规范详解</h4>
+                                <p>掌握各种日期格式的正确录入方法</p>
+                                <span class="video-tag">重点</span>
+                            </div>
+                        </div>
+                        <div class="video-card">
+                            <div class="video-thumbnail">
+                                <div class="play-btn">▶</div>
+                                <span class="video-duration">6:20</span>
+                            </div>
+                            <div class="video-info">
+                                <h4>常见问题排查实战</h4>
+                                <p>实际案例演示如何排查和解决导入错误</p>
+                                <span class="video-tag">实战</span>
+                            </div>
+                        </div>
+                        <div class="video-card">
+                            <div class="video-thumbnail">
+                                <div class="play-btn">▶</div>
+                                <span class="video-duration">4:15</span>
+                            </div>
+                            <div class="video-info">
+                                <h4>模板使用指南</h4>
+                                <p>如何正确使用和填写导入模板</p>
+                                <span class="video-tag">工具</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tutorial-resources">
+                        <h4>配套资源</h4>
+                        <div class="resource-list">
+                            <a href="#" class="resource-item">
+                                <span class="resource-icon">📄</span>
+                                <span>数据导入检查清单.pdf</span>
+                            </a>
+                            <a href="#" class="resource-item">
+                                <span class="resource-icon">📊</span>
+                                <span>示例数据模板.xlsx</span>
+                            </a>
+                            <a href="#" class="resource-item">
+                                <span class="resource-icon">📝</span>
+                                <span>字段规范速查表.pdf</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 页脚 -->
+        <footer class="footer">
+            <p>数据导入验证工具 v1.0 | 减少人工支持依赖，提升数据质量</p>
+        </footer>
+    </div>
+
+    <!-- 错误详情弹窗 -->
+    <div id="errorModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>错误详情</h3>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- 动态内容 -->
+            </div>
+        </div>
+    </div>
+
+    <script src="validator.js"></script>
+    <script src="docs.js"></script>
+    <script src="guide.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
