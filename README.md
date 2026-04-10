@@ -213,7 +213,7 @@ MIT License - 详见 LICENSE 文件
 ## 联系方式
 
 如有问题或建议，请联系：
-- 邮箱：support@example.com
+- 邮箱：1840521889@qq.com
 - 项目地址：https://github.com/example/data-import-validator
 
 ---
